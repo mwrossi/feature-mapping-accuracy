@@ -1,37 +1,37 @@
 # -*- coding: utf-8 -*-
 """
-This script contains the FUNCTIONS needed for 'synthetic_bedrock_maps_main.py'
+This script contains the FUNCTIONS needed for 'synthetic_feature_maps_main.py'
 
 DESCRIPTION:
     The functions here are used to build sythetic 'truth' and 'model' grids.
-    Bedrock is placed in the landscape as square tors using different
+    Features are placed in the landscape as square objects using different
     assumptions for how error is structured in the scene. It also includes
     functions to calculate accuracy and other grid metrics.
     
 FUNCTION DESCRIPTIONS
-    1: 'kernel'           Tor centres to bedrock using scipy.signal.convolve2d
-    2: 'tor_location'     Iterate over number of tors needed using 'kernel'
-    3: 'generate_grid'    Create bedrock map using 'tor_location'
+    1: 'kernel'           Build objects using scipy.signal.convolve2d
+    2: 'object_location'  Iterate over number of objects needed using 'kernel'
+    3: 'generate_grid'    Create feature map using 'object_location'
     4: 'model_offset'     Create model grid for translational offset of truth
     5: 'model_rand_err'   Create model grid for random error on truth
     6: 'accuracy_metrics' Calculate TP, FP, FN, TN, F1-score, MCC, nMCC
     7: 'edge_to_area'     Calculate edge to area ratio on given grid
 
 REQUIREMENTS:
-    libraries: NumPy, SciPy 
-
+    packages: numpy 1.23.5, scipy 1.10.0, matplotlib 3.7.0 
+    
 ASSOCIATED MANUSCRIPT:
-    Rossi, M.W., in review, Short Communication: Evaluating the accuracy of 
-    binary classifiers for geomorphic applications: Earth Surface Dynamics.
+    Rossi, M.W., in review, Evaluating the accuracy of binary classifiers for 
+    geomorphic applications: Earth Surface Dynamics.
 
-last edited by mwrossi on 08.30.2022
+last edited by mwrossi on 06.07.2023
 """
 
 import numpy as np
 from scipy import signal as sig
 from scipy import ndimage as ndi
 
-## BUILD TORS USING 2D CONVOLUTION TOR CENTRES FOR GIVEN SIZE ##
+## BUILD OBJECTS USING 2D CONVOLUTION OF OBJECT CENTRES FOR GIVEN SIZE ##
 def kernel(ksize,arr):
     k = np.ones((ksize, ksize))
     arrc = sig.convolve2d(arr, k, mode='same', boundary='wrap')
@@ -39,37 +39,38 @@ def kernel(ksize,arr):
     
     return arrc
 
-## BEDROCK MAP USING TOR LOCATIONS FOR A GIVEN BEDROCK FRACTION ##
-def tor_location(leng, frac, scale, seed_no):
+## FEATURE MAP USING OBJECT CENTERS ##
+def object_location(leng, frac, seed_no,scale):
     z = np.zeros((leng,leng))
 
-    tor_no = round((leng*leng*(1-frac))/(scale**2), 0)
+    obj_no = round((leng*leng*frac)/(scale**2), 0)  # initial number of objects
     
     i=1
     ratio=0.
     
-    #while i<20:
+    # while loop iterates on number of objects to match feature fraction
     while ratio < 0.995 or ratio > 1.005:
         if i==1:
-            tor_no = tor_no
+            obj_no = obj_no               # first iteration
         else:
-            tor_no = round(tor_no*ratio)
+            obj_no = round(obj_no*ratio)  # subsequent iterations
         #print(tor_no)
-        tor_dens = tor_no/(leng*leng)
+        obj_dens = obj_no/(leng*leng)     # convert to density
         
         z = np.zeros((leng,leng))
         np.random.seed(seed_no)
-        z += np.random.rand(leng,leng)         
-        z[z <= (1-tor_dens)] = 0
-        z[z > (1-tor_dens)] = 1
+        z += np.random.rand(leng,leng)
+        z[z > (1-obj_dens)] = 1 
+        z[z <= (1-obj_dens)] = 0
+       
         z = kernel(ksize=scale, arr=z) 
         
-        ratio = (1-frac)/(0.00000000001+np.sum(z)/(leng**2))
+        ratio = (frac)/(0.00000000001+np.sum(z)/(leng**2))
         #print(ratio)
         
         if i==50:
             break
-
+        
         i+=1
     
     if ratio < 0.995 or ratio > 1.005:
@@ -77,14 +78,12 @@ def tor_location(leng, frac, scale, seed_no):
     
     return z
 
-## GENERATE BEDROCK GRID ##
+## GENERATE FEATURE GRID ##
 def generate_grid(leng, frac, seed_no, scale):
-    # TRUTH grid
-    z = np.zeros((leng,leng))
-    np.random.seed(seed_no)
-    z += np.random.rand(leng,leng)
+    # use object location function to generate
+    # UPDATE to consolodate these functions into one
 
-    z = tor_location(leng,frac,scale,seed_no) 
+    z = object_location(leng,frac,seed_no,scale) 
     frac_actual = np.size(z[z==1])/(np.size(z))
     
     return [z, frac_actual];
@@ -95,11 +94,11 @@ def model_offset(z,dn):
     [m,n]=z.shape
     zn = np.zeros([m,n])
         
-    for j in range(n):
-        if j<dn:
-            zn[:,j] = z[:,(n-dn+j)]
+    for i in range(n):
+        if i<dn:
+            zn[:,i] = z[:,(n-dn+i)]
         else:
-            zn[:,j] = z[:,j-dn]
+            zn[:,i] = z[:,i-dn]
         
     frac_actual = np.size(zn[zn==1])/(np.size(zn))
     
@@ -133,7 +132,7 @@ def model_rand_err(z,err,seed_no):
     return [zn, frac_actual]            
 
 
-## CALCULATE F!-SCORE, MCC, and nMCC ##
+## CALCULATE F1-SCORE, MCC, and nMCC ##
 def accuracy_metrics(zm,zt):
     # Build Confusion Matrix
     zclass = (zm[:]-zt[:])+(3*zt[:])+1
@@ -149,7 +148,7 @@ def accuracy_metrics(zm,zt):
     
     return [F1, nMCC, zclass, TN, TP, FN, FP];
 
-## CALCULATE EDGE TO AREA RATIO ON BEDROCK MAP ##
+## CALCULATE EDGE TO AREA RATIO ON FEATURE MAP ##
 def edge_to_area(zm):
     ker = np.array(([0,1,0],[1,0,1],[0,1,0]))
     area = np.sum(zm)
