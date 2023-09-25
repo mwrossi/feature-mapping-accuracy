@@ -36,9 +36,7 @@ def kernel(ksize,arr):
 ## FEATURE MAP USING OBJECT CENTERS ##
 def object_location(leng, frac, seed_no,scale):
     z = np.zeros((leng,leng))
-
     obj_no = round((leng*leng*frac)/(scale**2), 0)  # initial number of objects
-    
     i=1
     ratio=0.
     
@@ -74,9 +72,7 @@ def object_location(leng, frac, seed_no,scale):
 
 ## GENERATE FEATURE GRID ##
 def generate_grid(leng, frac, seed_no, scale):
-    # use object location function to generate
-    # UPDATE to consolodate these functions into one
-
+    # use object location function to generate features
     z = object_location(leng,frac,seed_no,scale) 
     frac_actual = np.size(z[z==1])/(np.size(z))
     
@@ -126,7 +122,7 @@ def model_rand_err(z,err,seed_no):
     return [zn, frac_actual]            
 
 
-## CALCULATE F1-SCORE, MCC, and nMCC ##
+## CALCULATE F1 SCORE, MCC, and nMCC ##
 def accuracy_metrics(zm,zt):
     # Build Confusion Matrix
     zclass = (zm[:]-zt[:])+(3*zt[:])+1
@@ -150,5 +146,3 @@ def edge_to_area(zm):
     ratio = edges / area
     
     return ratio
-    
-    
