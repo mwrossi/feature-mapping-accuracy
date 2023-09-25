@@ -24,12 +24,6 @@ MODEL SCENARIOS
 REQUIREMENTS:
     packages: numpy 1.23.5, scipy 1.10.0, matplotlib 3.7.0
     code: synthetic_bedrock_maps_functions.py       
-
-ASSOCIATED MANUSCRIPT:
-    Rossi, M.W., in review, Evaluating the accuracy of binary classifiers for 
-    geomorphic applications: Earth Surface Dynamics.
-
-last edited by mwrossi on 06.07.2023
 """
 
 import numpy as np
